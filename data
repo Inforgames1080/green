@@ -1,0 +1,65 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Configurar pandas para exibir todas as linhas
+pd.set_option('display.max_rows', None)  # Exibir todas as linhas
+
+# Carregar o arquivo CSV
+file_path = 'dadosfut.csv'  # Substitua pelo caminho correto
+df = pd.read_csv(file_path)
+
+# Ajustar cabeçalhos e remover linhas desnecessárias
+df.columns = df.iloc[1]  # Usar a segunda linha como cabeçalhos
+df = df[2:]  # Remover as duas primeiras linhas
+
+# Renomear colunas relevantes
+df.columns = [
+    "Evento", "Data", "Lucro/Prejuízo", "Detalhes", "Acumulado", 
+    "Col6", "Col7", "Col8", "Col9", "Col10", "Col11", "Col12", "Col13", "Col14", "Col15", "Col16", "Col17"
+]
+df = df[["Evento", "Data", "Lucro/Prejuízo", "Acumulado"]]  # Manter colunas relevantes
+
+# Função para converter valores monetários em numéricos
+def converter_monetario(valor):
+    if isinstance(valor, str):
+        valor = valor.replace("R$", "").replace(".", "").replace(",", ".").strip()
+        valor = valor.replace(" ", "")  # Remover espaços adicionais
+        if valor.startswith("(") and valor.endswith(")"):  # Tratar parênteses como valores negativos
+            valor = "-" + valor[1:-1]
+        return float(valor) if valor else 0.0
+    return valor
+
+# Converter colunas 'Lucro/Prejuízo' e 'Acumulado' para numéricos
+df["Lucro/Prejuízo"] = df["Lucro/Prejuízo"].apply(converter_monetario)
+df["Acumulado"] = df["Acumulado"].apply(converter_monetario)
+
+# Converter a coluna 'Data' para o formato datetime, especificando o formato
+df["Data"] = pd.to_datetime(df["Data"], format='%d/%m/%Y', errors="coerce")  # Ajuste o formato conforme necessário
+
+# Separar os lucros e prejuízos em colunas distintas
+df['Lucro'] = df['Lucro/Prejuízo'].apply(lambda x: x if x > 0 else 0)
+df['Prejuízo'] = df['Lucro/Prejuízo'].apply(lambda x: x if x < 0 else 0)
+
+# Exibir valores para verificar se os dados estão corretos
+print("Exibindo as primeiras linhas para verificar valores:")
+print(df[['Evento', 'Lucro', 'Prejuízo']].head())
+
+# Filtrar apenas os dados com lucro (valores positivos)
+df_lucro = df[df['Lucro'] > 0]
+
+# Exibir a tabela filtrada com lucro
+print("Tabela filtrada com lucro (valores positivos):")
+print(df_lucro[['Evento', 'Lucro', 'Prejuízo']])
+
+# Somar o valor total dos lucros
+total_lucros = df_lucro['Lucro'].sum()
+print(f"O valor total dos lucros é: R$ {total_lucros:.2f}")
+
+# Criar gráfico de barras para os lucros
+plt.figure(figsize=(12, 6))
+sns.barplot(data=df_lucro, x="Lucro", y="Evento", hue="Evento", palette="viridis", orient="h", legend=False)
+plt.title("Lucros por Evento")
+plt.xlabel("Lucro (R$)")
+plt.ylabel("Evento")
+plt.show()
